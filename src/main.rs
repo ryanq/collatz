@@ -1,11 +1,11 @@
 extern crate fern;
-#[macro_use(error, info, log)]
+#[macro_use(error, info, log, warn)]
 extern crate log;
 extern crate rustc_serialize;
 
 use std::collections::BTreeSet;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::Path;
 use rustc_serialize::json;
 
@@ -22,8 +22,17 @@ fn main() {
         panic!("error initializing log: {}", e);
     }
 
-    let mut cache = BTreeSet::new();
-    cache.insert(1);
+    let mut cache = match load_cache("collatz.cache") {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("unable to load cache: {:?}", e);
+            info!("using default cache: {{1}}");
+            let mut c = BTreeSet::new();
+            c.insert(1);
+
+            c
+        }
+    };
 
     for i in 1..100 {
         if !converges(i, &mut cache) {
@@ -69,6 +78,16 @@ fn converges(number: u64, cache: &mut BTreeSet<u64>) -> bool {
 
 // ---------------------------------------------------------------------
 
+fn load_cache<P>(path: P) -> Result<BTreeSet<u64>, CacheError> where P: AsRef<Path> {
+    let mut data = String::new();
+    let mut file = try!(File::open(path));
+    try!(file.read_to_string(&mut data));
+
+    let cache = try!(json::decode(&data));
+
+    Ok(cache)
+}
+
 fn store_cache<P>(cache: &BTreeSet<u64>, path: P) -> Result<(), CacheError> where P: AsRef<Path> {
     let data = try!(json::encode(cache));
 
@@ -83,6 +102,7 @@ fn store_cache<P>(cache: &BTreeSet<u64>, path: P) -> Result<(), CacheError> wher
 #[derive(Debug)]
 enum CacheError {
     Io(io::Error),
+    Decode(json::DecoderError),
     Encode(json::EncoderError),
 }
 
@@ -95,6 +115,12 @@ impl From<io::Error> for CacheError {
 impl From<json::EncoderError> for CacheError {
     fn from(err: json::EncoderError) -> CacheError {
         CacheError::Encode(err)
+    }
+}
+
+impl From<json::DecoderError> for CacheError {
+    fn from(err: json::DecoderError) -> CacheError {
+        CacheError::Decode(err)
     }
 }
 
