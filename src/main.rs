@@ -4,6 +4,8 @@ extern crate log;
 extern crate rustc_serialize;
 
 use std::collections::BTreeSet;
+use std::error::Error;
+use std::fmt::{self, Display, Formatter};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
@@ -25,7 +27,7 @@ fn main() {
     let mut cache = match load_cache("collatz.cache") {
         Ok(c) => c,
         Err(e) => {
-            warn!("unable to load cache: {:?}", e);
+            warn!("unable to load cache: {:?}", e.description());
             info!("using default cache: {{1}}");
             let mut c = BTreeSet::new();
             c.insert(1);
@@ -43,7 +45,7 @@ fn main() {
 
     match store_cache(&cache, "collatz.cache") {
         Ok(_) => info!("stored cache in \"collatz.cache\""),
-        Err(e) => error!("unable to store cache: {:?}", e),
+        Err(e) => error!("unable to store cache: {}", e.description()),
     }
 }
 
@@ -104,6 +106,26 @@ enum CacheError {
     Io(io::Error),
     Decode(json::DecoderError),
     Encode(json::EncoderError),
+}
+
+impl Display for CacheError {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            CacheError::Io(ref err) => write!(f, "I/O error: {}", err),
+            CacheError::Decode(ref err) => write!(f, "decode error: {}", err),
+            CacheError::Encode(ref err) => write!(f, "encode error: {}", err),
+        }
+    }
+}
+
+impl Error for CacheError {
+    fn description(&self) -> &str {
+        match *self {
+            CacheError::Io(ref err) => err.description(),
+            CacheError::Decode(ref err) => err.description(),
+            CacheError::Encode(ref err) => err.description(),
+        }
+    }
 }
 
 impl From<io::Error> for CacheError {
