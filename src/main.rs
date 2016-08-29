@@ -1,6 +1,22 @@
+extern crate fern;
+#[macro_use(error, info, log)]
+extern crate log;
+
 use std::collections::BTreeSet;
 
 fn main() {
+    let logger_config = fern::DispatchConfig {
+        format: Box::new(|msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
+            format!("[{:>5}] {}", level, msg)
+        }),
+        output: vec![fern::OutputConfig::stdout()],
+        level: log::LogLevelFilter::Info,
+    };
+    let log = fern::init_global_logger(logger_config, log::LogLevelFilter::Info);
+    if let Err(e) = log {
+        panic!("error initializing log: {}", e);
+    }
+
     let mut cache = BTreeSet::new();
     cache.insert(1);
 
@@ -16,36 +32,25 @@ fn collatz(number: u64) -> u64 {
 }
 
 fn converges(number: u64, cache: &mut BTreeSet<u64>) -> bool {
-    let mut seen = BTreeSet::new();
-    let mut converged = false;
+    let mut seen = Vec::new();
     let mut current = number;
-
-    print!("{0}: {0}", number);
-
-    while !cache.contains(&current) {
-        seen.insert(current);
-        current = collatz(current);
-        print!(" -> {}", current);
+    loop {
+        if cache.contains(&current) {
+            seen.push(current);
+            info!("  {}: {:?} (converged)", number, seen);
+            cache.extend(seen);
+            return true;
+        }
 
         if seen.contains(&current) {
-            break;
+            seen.push(current);
+            error!("! {}: {:?} (diverged)", number, seen);
+            return false;
         }
 
-        if current == 1 {
-            converged = true;
-        }
+        seen.push(current);
+        current = collatz(current);
     }
-
-    if converged {
-        print!(" (converged)");
-        cache.append(&mut seen);
-    } else {
-        print!(" (diverged)");
-    }
-
-    println!("");
-
-    converged
 }
 
 #[cfg(test)]
