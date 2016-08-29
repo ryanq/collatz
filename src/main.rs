@@ -1,8 +1,13 @@
 extern crate fern;
 #[macro_use(error, info, log)]
 extern crate log;
+extern crate rustc_serialize;
 
 use std::collections::BTreeSet;
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::Path;
+use rustc_serialize::json;
 
 fn main() {
     let logger_config = fern::DispatchConfig {
@@ -25,6 +30,11 @@ fn main() {
             error!("found a divergent sequence for {}", i);
             break;
         }
+    }
+
+    match store_cache(&cache, "collatz.cache") {
+        Ok(_) => info!("stored cache in \"collatz.cache\""),
+        Err(e) => error!("unable to store cache: {:?}", e),
     }
 }
 
@@ -54,6 +64,37 @@ fn converges(number: u64, cache: &mut BTreeSet<u64>) -> bool {
 
         seen.push(current);
         current = collatz(current);
+    }
+}
+
+// ---------------------------------------------------------------------
+
+fn store_cache<P>(cache: &BTreeSet<u64>, path: P) -> Result<(), CacheError> where P: AsRef<Path> {
+    let data = try!(json::encode(cache));
+
+    let mut file = try!(File::create(path));
+    try!(file.write(data.as_bytes()));
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------
+
+#[derive(Debug)]
+enum CacheError {
+    Io(io::Error),
+    Encode(json::EncoderError),
+}
+
+impl From<io::Error> for CacheError {
+    fn from(err: io::Error) -> CacheError {
+        CacheError::Io(err)
+    }
+}
+
+impl From<json::EncoderError> for CacheError {
+    fn from(err: json::EncoderError) -> CacheError {
+        CacheError::Encode(err)
     }
 }
 
