@@ -20,8 +20,12 @@ fn main() {
     let mut cache = BTreeSet::new();
     cache.insert(1);
 
-    converges(80, &mut cache);
-    converges(7, &mut cache);
+    for i in 1..100 {
+        if !converges(i, &mut cache) {
+            error!("found a divergent sequence for {}", i);
+            break;
+        }
+    }
 }
 
 fn collatz(number: u64) -> u64 {
