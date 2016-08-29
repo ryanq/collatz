@@ -36,10 +36,12 @@ fn main() {
         }
     };
 
-    for i in 1..100 {
-        if !converges(i, &mut cache) {
-            error!("found a divergent sequence for {}", i);
-            break;
+    if let Some(start) = find_first_unchecked_value(&cache) {
+        for i in start..(start + 100) {
+            if !converges(i, &mut cache) {
+                error!("found a divergent sequence for {}", i);
+                break;
+            }
         }
     }
 
@@ -76,6 +78,18 @@ fn converges(number: u64, cache: &mut BTreeSet<u64>) -> bool {
         seen.push(current);
         current = collatz(current);
     }
+}
+
+// ---------------------------------------------------------------------
+
+fn find_first_unchecked_value(cache: &BTreeSet<u64>) -> Option<u64> {
+    for i in 1..std::u64::MAX {
+        if !cache.contains(&i) {
+            return Some(i);
+        }
+    }
+
+    None
 }
 
 // ---------------------------------------------------------------------
