@@ -37,7 +37,7 @@ fn main() {
     };
 
     if let Some(start) = find_first_unchecked_value(&cache) {
-        for i in start..(start + 100) {
+        for i in start..(start + 100000) {
             if !converges(i, &mut cache) {
                 error!("found a divergent sequence for {}", i);
                 break;
