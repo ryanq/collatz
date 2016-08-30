@@ -1,2 +1,3 @@
 target
+collatz.cache
 Cargo.lock
